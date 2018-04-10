@@ -14,7 +14,6 @@ import maya.OpenMayaUI as OpenMayaUI  # pylint: disable=E0401
 import PySide2.QtWidgets as QtWidgets  # pylint: disable=E0401
 import RenderSetupUtility
 import shiboken2  # pylint: disable=E0401
-
 from MayaCustomShelf.customCamera import CAMERA_TEMPLATE
 from MayaCustomShelf.mayaViewportPreset import (MAYA_VIEWPORT_PRESET,
                                                 applyViewportPreset)
@@ -83,7 +82,7 @@ def viewPreset3(*args):  # pylint: disable=W0613
     applyViewportPreset(modelPanelName, MAYA_VIEWPORT_PRESET['preset3'])
 
 
-def toggleFullScreen(*args):
+def toggleFullScreen(*args):  # pylint: disable=W0613
     """Toggle full screen mode"""
 
     TEMPLATE = {
@@ -101,17 +100,20 @@ def toggleFullScreen(*args):
 
     def getQt(string):
         """private function - returns a qobject"""
+
         ptr = OpenMayaUI.MQtUtil.findControl(string)
         qtItem = shiboken2.wrapInstance(long(ptr), QtWidgets.QWidget)
         parent = qtItem.parent()
-        if parent:
-            gparent = parent.parent()
-            if gparent:
-                return gparent
-            else:
-                return parent
+        if not parent:
+            return parent
+
+        gparent = parent.parent()
+        if gparent:
+            return gparent
+        return parent
 
     o = QGet()
+    menuBar = o.mayaMainWindow.children()[2]
 
     mode = True
     for k in TEMPLATE:
@@ -126,14 +128,14 @@ def toggleFullScreen(*args):
 
     # Maya MainWindow children visibility
     if mode is True:
-        # menuBar.show()
+        menuBar.show()
         o.mayaMainWindow.showMaximized()
         for k in TEMPLATE:
             item = getQt(k)
             if TEMPLATE[k] and item:
                 item.show()
-    if mode is False:
-        # menuBar.hide()
+    elif mode is False:
+        menuBar.hide()
         o.mayaMainWindow.showFullScreen()
         for k in TEMPLATE:
             item = getQt(k)
@@ -211,7 +213,7 @@ def mirrorMesh(axis):
     selectionSet = []
 
     def boundingBox(name):
-        """ get bounding box """
+        """ get mesh bounding box """
 
         def average(l):
             """private function"""
@@ -246,8 +248,15 @@ def mirrorMesh(axis):
     cmds.delete()
 
     for s in sel:
-        cmds.polyMirrorFace(s, worldSpace=True, pivot=(0, 0, 0), mergeMode=MERGE_MODE,
-                            mergeThreshold=MERGE_THRESHOLD, direction=axis, constructionHistory=True)
+        cmds.polyMirrorFace(
+            s,
+            worldSpace=True,
+            pivot=(0, 0, 0),
+            mergeMode=MERGE_MODE,
+            mergeThreshold=MERGE_THRESHOLD,
+            direction=axis,
+            constructionHistory=True
+        )
 
     if hilite:
         cmds.hilite(hilite, replace=True)
@@ -264,7 +273,7 @@ def resetMesh():
         cmds.delete(s, constructionHistory=True)
 
 
-def layoutWindow(*args):
+def layoutWindow(*args):  # pylint: disable=W0613
     """ Opens a new Custom Layout window """
 
     window = CameraLayoutWindow()
@@ -280,7 +289,7 @@ def layoutWindow(*args):
     applyViewportPreset(window.modelPanel, MAYA_VIEWPORT_PRESET['preset1'])
 
 
-def randomizedDuplicate(*args):
+def randomizedDuplicate(*args):  # pylint: disable=W0613
     """Show the Random Duplicate UI"""
     RandomDuplicate().createUI()
 
@@ -292,7 +301,8 @@ def setMenuMode(arg):
 
 
 def createUI():
-    tabIdx = -1
+    """ Creates the custom toolbar """
+
     btnIdx = -1
     shelfIdx = -1
     btnCmds = []
@@ -304,8 +314,8 @@ def createUI():
     try:
         cmds.deleteUI('%s' % (windowID))
         cmds.deleteUI('%s%s' % (windowID, 'WorkspaceControl'))
-    except Exception:
-        pass
+    except RuntimeError:
+        print # Object 'MayaCustomShelfWindow' not found.
 
     window = QtWidgets.QWidget()
     window.setWindowTitle('Custom Toolset')
@@ -313,12 +323,6 @@ def createUI():
     window.setObjectName(windowID)
     window.setContentsMargins(0, 0, 0, 0)
     window.setFixedHeight(32 + 4)
-    # window.setSpacing(0)
-
-    workspacePanel1 = mayaMainWindow.children()[6]
-    mayaLayoutInternalWidget = workspacePanel1.children()[2]
-    mainWorkBar = mayaLayoutInternalWidget.children()[4]
-    viewports = mainWorkBar.children()[1]
 
     window.show()
     shelfIdx += 1
@@ -333,21 +337,6 @@ def createUI():
         preventOverride=True
     )
 
-    # Separator
-    btnIdx += 1
-    btnCmds.append(separator)
-    cmds.shelfButton(
-        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
-        annotation='',
-        width=24,
-        height=windowSize[1],
-        image=getIconPath('separator16x32'),
-        useAlpha=True,
-        flat=True,
-        sourceType='python',
-        command=btnCmds[btnIdx],
-        enable=False
-    )
     btnIdx += 1
     btnCmds.append(rsUtility)
     cmds.shelfButton(
@@ -631,14 +620,8 @@ def createUI():
         command=btnCmds[btnIdx]
     )
 
-    # ptr = OpenMayaUI.MQtUtil.findControl('Outliner')
-    # OutlinerQt = shiboken2.wrapInstance(long(ptr), QtWidgets.QWidget)
-    ptr = OpenMayaUI.MQtUtil.findControl('NEXDockControl')
-    NEXDockControlQt = shiboken2.wrapInstance(long(ptr), QtWidgets.QWidget)
     ptr = OpenMayaUI.MQtUtil.findControl('MainPane')
     MainPaneQt = shiboken2.wrapInstance(long(ptr), QtWidgets.QWidget)
-    ptr = OpenMayaUI.MQtUtil.findControl('ToolBox')
-    ToolBoxQt = shiboken2.wrapInstance(long(ptr), QtWidgets.QWidget)
 
     layout = MainPaneQt.layout()
     layout.insertWidget(0, window)
