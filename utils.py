@@ -57,7 +57,8 @@ class QGet(QtCore.QObject):
     """ Gets and stores a QT item """
 
     def __init__(self, parent=None):
-        super(QGet, self).__init__(parent=parent)
+        QtCore.QObject.__init__(self)
+        # super(QGet, self).__init__(parent=parent)
 
         ptr = OpenMayaUI.MQtUtil.mainWindow()
         mayaMainWindow = shiboken2.wrapInstance(

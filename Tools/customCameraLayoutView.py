@@ -4,32 +4,48 @@
 
 # pylint: disable=C0103
 
-import shiboken2 # pylint: disable=E0401
-
-import maya.app.renderSetup.model.renderSetup as renderSetupModel # pylint: disable=E0401
-import maya.cmds as cmds # pylint: disable=E0401
-import maya.OpenMayaUI as OpenMayaUI # pylint: disable=E0401
-from maya.app.general.mayaMixin import MayaQWidgetDockableMixin # pylint: disable=E0401
-
-import PySide2.QtCore as QtCore # pylint: disable=E0401
-import PySide2.QtGui as QtGui # pylint: disable=E0401
-import PySide2.QtWidgets as QtWidgets # pylint: disable=E0401
-
-from MayaCustomShelf.utils import getIconPath, QGet
-from MayaCustomShelf.mayaViewportPreset import MAYA_VIEWPORT_PRESET, applyViewportPreset
-
+import maya.app.renderSetup.model.renderSetup as renderSetupModel  # pylint: disable=E0401
+from maya.app.general.mayaMixin import MayaQWidgetDockableMixin  # pylint: disable=E0401
+import maya.cmds as cmds  # pylint: disable=E0401
+import maya.OpenMayaUI as OpenMayaUI  # pylint: disable=E0401
+import PySide2.QtCore as QtCore  # pylint: disable=E0401
+import PySide2.QtGui as QtGui  # pylint: disable=E0401
+import PySide2.QtWidgets as QtWidgets  # pylint: disable=E0401
+import shiboken2  # pylint: disable=E0401
+from MayaCustomShelf.mayaViewportPreset import (
+    MAYA_VIEWPORT_PRESET,
+    applyViewportPreset
+)
+from MayaCustomShelf.utils import getIconPath
 from RenderSetupUtility.main.shaderUtility import ShaderUtility
 
+class Dockable(MayaQWidgetDockableMixin):
+    def __init__(self):
+        super(MayaQWidgetDockableMixin, self).__init__()
 
-class CameraLayoutWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
+class CameraLayoutWindow(Dockable, QtWidgets.QWidget):
     """ A Custom Model View for Layout inspection """
 
     windowID = 'cameraLayout'
     wcID = '%sWorkspaceControl' % windowID
 
+    _instance = None
+
+    def __new__(cls, *awrgs, **kwargs):
+        if not cls._instance:
+            cls._instance = QtWidgets.QWidget.__new__(cls, *awrgs, **kwargs)
+            cls._instance.__initialized__ = False
+        else:
+            cls._instance.__initialized__ = True
+        return cls._instance
+
     def __init__(self, parent=None):
-        self.deleteInstances()
-        super(CameraLayoutWindow, self).__init__(parent=parent)
+        if hasattr(self, '__initialized__'):
+            if self.__initialized__:
+                return
+        # super(CameraLayoutWindow, self).__init__(parent=parent)
+        MayaQWidgetDockableMixin.__init__(self)
+        QtWidgets.QWidget.__init__(self, parent=parent)
 
         self.ModelPanel = None
 
@@ -62,58 +78,6 @@ class CameraLayoutWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         )
 
         cmds.evalDeferred(self.preset3Button)
-        #
-        # def lower():
-        #     self.parent().objectName().lower()
-        # timer = QtCore.QTimer(self)
-        # timer.timeout.connect(lower)
-        # timer.setInterval(120)
-        # timer.start()
-
-    def hideEvent(self, event):
-        """
-        On a hideEvent unparent the render view.
-        This is needed to avoid a maya crash.
-        """
-
-        o = QGet()
-        timeEditor = o.getByWindowTitle('Time Editor')
-        if timeEditor is not None:
-            timeEditor.setParent(o.mayaMainWindow, QtCore.Qt.Window)
-            timeEditor.show()
-
-        timeEditor = o.getByWindowTitle('Time Editor')
-        if timeEditor is not None:
-            for c in timeEditor.findChildren(QtWidgets.QWidget, 'teToggleSnappingButton'):
-                c.parent().parent().show()
-            for c in timeEditor.findChildren(QtWidgets.QWidget, 'timeEditorPanel1TimeEd'):
-                timeEd = c
-            for c in timeEditor.findChildren(QtWidgets.QTabBar, 'qt_tabwidget_tabbar'):
-                c.show()
-            for c in timeEditor.findChildren(QtWidgets.QMenuBar):
-                c.show()
-            for c in timeEditor.findChildren(QtWidgets.QComboBox):
-                print c.parent().show()
-            for c in timeEditor.findChildren(QtWidgets.QGraphicsView):
-                parent = c.parent().parent()
-                parent.children()[1].show()
-        print 'Camera Layout was closed.'
-
-    def deleteInstances(self):
-        o = QGet()
-        # Delete the workspaceControl
-        if cmds.workspaceControl(self.__class__.wcID, q=True, exists=True):
-            print 'Deleting control {0}'.format(self.__class__.wcID)
-            cmds.workspaceControl(self.__class__.wcID, e=True, close=True)
-            # cmds.deleteUI(self.__class__.wcID, control=True) # enable if the window is retainable
-
-        # Delete the instance
-        for obj in o.allWidgets():
-            if type(obj) is QtWidgets.QWidget:
-                if obj.objectName() == self.__class__.windowID:
-                    print 'Deleting instance {0}'.format(obj)
-                    obj.setParent(None)
-                    obj.deleteLater()
 
     def preset1Button(self, *args):
         """Viewport Preset"""
@@ -258,7 +222,6 @@ class WorkspaceControl(object):
                     cmds.deleteUI(name, window=True)
                 else:
                     cmds.deleteUI(name, control=True)
-
 
 
 class Timecode(QtWidgets.QWidget):

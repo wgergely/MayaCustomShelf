@@ -8,16 +8,20 @@ and to toggle between viewport presets.
 import base64
 import os
 import tempfile
+import imp
+import sys
+
+import PySide2.QtWidgets as QtWidgets  # pylint: disable=E0401
+import shiboken2  # pylint: disable=E0401
 
 import maya.cmds as cmds  # pylint: disable=E0401
 import maya.OpenMayaUI as OpenMayaUI  # pylint: disable=E0401
-import PySide2.QtWidgets as QtWidgets  # pylint: disable=E0401
+
 import RenderSetupUtility
-import shiboken2  # pylint: disable=E0401
+
 from MayaCustomShelf.customCamera import CAMERA_TEMPLATE
-from MayaCustomShelf.mayaViewportPreset import (MAYA_VIEWPORT_PRESET,
-                                                applyViewportPreset)
-from MayaCustomShelf.Tools.customCameraLayoutView import CameraLayoutWindow
+from MayaCustomShelf.mayaViewportPreset import MAYA_VIEWPORT_PRESET
+from MayaCustomShelf.mayaViewportPreset import applyViewportPreset
 from MayaCustomShelf.Tools.randomizedDuplicate import RandomDuplicate
 from MayaCustomShelf.utils import QGet, getIconPath
 
@@ -25,6 +29,7 @@ SCRIPT_NAME = 'MayaCustomShelf'
 windowID = '{}Window'.format(SCRIPT_NAME)
 windowTitle = 'Gergely\'s Custom Toolset'
 windowPrefix = 'MCShelf'
+
 tempDir = tempfile.gettempdir()
 
 
@@ -42,12 +47,33 @@ MENU_MODES = (
 
 
 def separator(*args):  # pylint: disable=W0613
-    """ Separator """
+    """Separator."""
     pass
+
+
+def reload_modules(f):
+    """Reloads the given module name."""
+    for module in sys.modules.values():
+        if not module:
+            continue
+        elif f.lower() not in module.__name__.lower():
+            continue
+        try:
+            imp.reload(module)
+            print module, 'reloaded.'
+        except ImportError as err:
+            print err
+        except TypeError as err:
+            print err
+        except RuntimeError as err:
+            print err
+        except AssertionError as err:
+            print err
 
 
 def rsUtility(*args):  # pylint: disable=W0613
     """Show RenderSetupUtility Window"""
+    reload_modules('RenderSetupUtility')
     RenderSetupUtility.show()
 
 
@@ -83,11 +109,11 @@ def viewPreset3(*args):  # pylint: disable=W0613
 
 
 def toggleFullScreen(*args):  # pylint: disable=W0613
-    """Toggle full screen mode"""
+    """This is a hackish implementation to toggle Maya's full-screen mode."""
 
     TEMPLATE = {
-        'Shelf': True,
-        'Outliner': False,
+        'Shelf': True, # hide shelves
+        'Outliner': False, # hide the outliner
         'NEXDockControl': False,
         'MainPane': False,
         'ToolBox': True,
@@ -113,29 +139,21 @@ def toggleFullScreen(*args):  # pylint: disable=W0613
         return parent
 
     o = QGet()
-    menuBar = o.mayaMainWindow.children()[2]
-
     mode = True
     for k in TEMPLATE:
         item = getQt(k)
         if TEMPLATE[k] and item:
-            if item.isHidden() is True:
-                mode = True
-                break
-            else:
-                mode = False
-                break
+            mode = True if item.isHidden() else False
+            break
 
     # Maya MainWindow children visibility
-    if mode is True:
-        menuBar.show()
+    if mode:
         o.mayaMainWindow.showMaximized()
         for k in TEMPLATE:
             item = getQt(k)
             if TEMPLATE[k] and item:
                 item.show()
-    elif mode is False:
-        menuBar.hide()
+    else:
         o.mayaMainWindow.showFullScreen()
         for k in TEMPLATE:
             item = getQt(k)
@@ -144,18 +162,21 @@ def toggleFullScreen(*args):  # pylint: disable=W0613
 
     # model editor icon bars
     for modelPanel in cmds.getPanel(type='modelPanel'):
-        if modelPanel in ['modelPanel1', 'modelPanel2', 'modelPanel3', 'modelPanel4']:
-            ptr = OpenMayaUI.MQtUtil.findControl(modelPanel)
-            if not ptr:
-                continue
-            modelPanelQt = shiboken2.wrapInstance(long(ptr), QtWidgets.QWidget)
-            iconbar = modelPanelQt.findChildren(
-                QtWidgets.QWidget, 'modelEditorIconBar')[0]
+        if modelPanel not in ['modelPanel1', 'modelPanel2', 'modelPanel3', 'modelPanel4']:
+            continue
 
-            if mode is True:
-                iconbar.show()
-            if mode is False:
-                iconbar.hide()
+        ptr = OpenMayaUI.MQtUtil.findControl(modelPanel)
+        if not ptr:
+            continue
+
+        widget = shiboken2.wrapInstance(long(ptr), QtWidgets.QWidget)
+        iconbar = widget.findChildren(
+            QtWidgets.QWidget, 'modelEditorIconBar')[0]
+
+        if mode is True:
+            iconbar.show()
+        if mode is False:
+            iconbar.hide()
 
     # outliner
     outliner = getQt('Outliner')
@@ -172,7 +193,6 @@ def toggleFullScreen(*args):  # pylint: disable=W0613
                 o.setWidget(obj)
                 obj.hide()
 
-# Modeling tools
 
 
 def mirrorMesh(axis):
@@ -264,29 +284,41 @@ def mirrorMesh(axis):
     else:
         cmds.select(sel)
 
+def unlock_attributes(obj):
+    """Unlocks all the attributes of the given object."""
+    attrs = cmds.listAttr(obj)
+    for attr in attrs:
+        try:
+            if cmds.getAttr("{0}.{1}".format(obj, attr), lock=True) == True:
+                print "{0}.{1} is Locked".format(obj, attr)
+                cmds.setAttr("{0}.{1}".format(obj, attr), lock=False)
+            else:
+                print "{0}.{1} is unlocked".format(obj, attr)
+        except ValueError:
+            print "Couldn't get locked-state of {0}.{1}".format(obj, attr)
 
-def resetMesh():
+def resetMesh(*args):
+    """Deletes the mesh construction history."""
     sel = cmds.ls(selection=True, long=True)
     for s in sel:
+        unlock_attributes(s)
         cmds.cutKey(s, shape=True, hierarchy='both')
         cmds.makeIdentity(apply=True)
         cmds.delete(s, constructionHistory=True)
 
+def showProjects(*args):
+    """Shows the custom file-browser."""
+    import browser.hosts.mayabrowser.mayabrowser as mayabrowser
+    widget = mayabrowser.MayaBrowserWidget()
+    widget.filesWidget.hide()
+    widget.activate_widget(widget.projectsWidget)
 
-def layoutWindow(*args):  # pylint: disable=W0613
-    """ Opens a new Custom Layout window """
-
-    window = CameraLayoutWindow()
-    window.show(dockable=True, retain=False)
-
-    o = QGet()
-    win = o.getByWindowTitle('Camera Layout')
-    if QtWidgets.QDesktopWidget().screenCount() == 1:
-        win.showNormal()
-    if QtWidgets.QDesktopWidget().screenCount() >= 2:
-        win.showMaximized()
-
-    applyViewportPreset(window.modelPanel, MAYA_VIEWPORT_PRESET['preset1'])
+def showFiles(*args):
+    """Shows the custom file-browser."""
+    import browser.hosts.mayabrowser.mayabrowser as mayabrowser
+    widget = mayabrowser.MayaBrowserWidget()
+    widget.projectsWidget.hide()
+    widget.activate_widget(widget.filesWidget)
 
 
 def randomizedDuplicate(*args):  # pylint: disable=W0613
@@ -301,30 +333,33 @@ def setMenuMode(arg):
 
 
 def createUI():
-    """ Creates the custom toolbar """
+    """Main method to create the toolbar.
 
+    We're using Maya's internal gui creation to make the toolbar,
+    but perhaps this would be better implemented to be written in PySide2.
+
+    """
     btnIdx = -1
     shelfIdx = -1
     btnCmds = []
 
-    mayaMainWindowPointer = OpenMayaUI.MQtUtil.mainWindow()
     mayaMainWindow = shiboken2.wrapInstance(
-        long(mayaMainWindowPointer), QtWidgets.QWidget)
+        long(OpenMayaUI.MQtUtil.mainWindow()),
+        QtWidgets.QWidget
+    )
 
     try:
         cmds.deleteUI('%s' % (windowID))
         cmds.deleteUI('%s%s' % (windowID, 'WorkspaceControl'))
     except RuntimeError:
-        print # Object 'MayaCustomShelfWindow' not found.
+        print  'Object \'MayaCustomShelfWindow\' not found.'
 
     window = QtWidgets.QWidget()
-    window.setWindowTitle('Custom Toolset')
-    window.parent = mayaMainWindow
     window.setObjectName(windowID)
-    window.setContentsMargins(0, 0, 0, 0)
-    window.setFixedHeight(32 + 4)
-
+    window.setFixedHeight(36)
     window.show()
+
+    # The main layout. TODO: Would be cleaner if this was a PySide2 widget/layout
     shelfIdx += 1
     cmds.shelfLayout(
         '%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
@@ -333,12 +368,9 @@ def createUI():
         width=windowSize[0],
         height=32,
         cellWidthHeight=[windowSize[1] + margin[0]] * 2,
-        # backgroundColor=[color+0.05]*3,
         preventOverride=True
     )
 
-    btnIdx += 1
-    btnCmds.append(rsUtility)
     cmds.shelfButton(
         parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
         annotation='',
@@ -352,11 +384,8 @@ def createUI():
         flat=True,
         version='2017',
         sourceType='python',
-        command=btnCmds[btnIdx]
+        command=rsUtility
     )
-    # Separator
-    btnIdx += 1
-    btnCmds.append(separator)
     cmds.shelfButton(
         parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
         annotation='',
@@ -366,11 +395,9 @@ def createUI():
         useAlpha=True,
         flat=True,
         sourceType='python',
-        command=btnCmds[btnIdx],
+        command=separator,
         enable=False
     )
-    btnIdx += 1
-    btnCmds.append(importCameraPresetScene)
     cmds.shelfButton(
         parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
         annotation='',
@@ -384,10 +411,8 @@ def createUI():
         flat=True,
         version='2017',
         sourceType='python',
-        command=btnCmds[btnIdx]
+        command=importCameraPresetScene
     )
-    btnIdx += 1
-    btnCmds.append(viewPreset1)
     cmds.shelfButton(
         parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
         annotation='',
@@ -401,10 +426,8 @@ def createUI():
         flat=True,
         version='2017',
         sourceType='python',
-        command=btnCmds[btnIdx]
+        command=viewPreset1
     )
-    btnIdx += 1
-    btnCmds.append(viewPreset2)
     cmds.shelfButton(
         parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
         annotation='',
@@ -418,10 +441,8 @@ def createUI():
         flat=True,
         version='2017',
         sourceType='python',
-        command=btnCmds[btnIdx]
+        command=viewPreset2
     )
-    btnIdx += 1
-    btnCmds.append(viewPreset3)
     cmds.shelfButton(
         parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
         annotation='',
@@ -435,10 +456,8 @@ def createUI():
         flat=True,
         version='2017',
         sourceType='python',
-        command=btnCmds[btnIdx]
+        command=viewPreset3
     )
-    btnIdx += 1
-    btnCmds.append(toggleFullScreen)
     cmds.shelfButton(
         parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
         annotation='',
@@ -452,11 +471,8 @@ def createUI():
         flat=True,
         version='2017',
         sourceType='python',
-        command=btnCmds[btnIdx]
+        command=toggleFullScreen
     )
-    # Separator
-    btnIdx += 1
-    btnCmds.append(separator)
     cmds.shelfButton(
         parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
         annotation='',
@@ -466,7 +482,7 @@ def createUI():
         useAlpha=True,
         flat=True,
         sourceType='python',
-        command=btnCmds[btnIdx],
+        command=separator,
         enable=False
     )
 
@@ -482,9 +498,6 @@ def createUI():
     for item in MENU_MODES:
         cmds.menuItem(item, enableCommandRepeat=True, command=setMenuMode)
 
-    # Separator
-    btnIdx += 1
-    btnCmds.append(separator)
     cmds.shelfButton(
         parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
         annotation='',
@@ -494,44 +507,10 @@ def createUI():
         useAlpha=True,
         flat=True,
         sourceType='python',
-        command=btnCmds[btnIdx],
+        command=separator,
         enable=False
     )
 
-    btnIdx += 1
-    btnCmds.append(layoutWindow)
-    cmds.shelfButton(
-        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
-        annotation='',
-        width=windowSize[1],
-        height=windowSize[1],
-        marginWidth=0,
-        marginHeight=0,
-        align='center',
-        image=getIconPath('viewPreset132'),
-        useAlpha=True,
-        flat=True,
-        version='2017',
-        sourceType='python',
-        command=btnCmds[btnIdx]
-    )
-    # Separator
-    btnIdx += 1
-    btnCmds.append(separator)
-    cmds.shelfButton(
-        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
-        annotation='',
-        width=24,
-        height=windowSize[1],
-        image=getIconPath('separator16x32'),
-        useAlpha=True,
-        flat=True,
-        sourceType='python',
-        command=btnCmds[btnIdx],
-        enable=False
-    )
-    btnIdx += 1
-    btnCmds.append(randomizedDuplicate)
     cmds.shelfButton(
         parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
         annotation='',
@@ -545,11 +524,8 @@ def createUI():
         flat=True,
         version='2017',
         sourceType='python',
-        command=btnCmds[btnIdx]
+        command=randomizedDuplicate
     )
-    # Separator
-    btnIdx += 1
-    btnCmds.append(separator)
     cmds.shelfButton(
         parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
         annotation='',
@@ -559,51 +535,9 @@ def createUI():
         useAlpha=True,
         flat=True,
         sourceType='python',
-        command=btnCmds[btnIdx],
+        command=separator,
         enable=False
     )
-    btnIdx += 1
-
-    def mirrorMeshX2():
-        mirrorMesh('-x')
-    btnCmds.append(mirrorMeshX2)
-    cmds.shelfButton(
-        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
-        annotation='',
-        width=windowSize[1],
-        height=windowSize[1],
-        marginWidth=0,
-        marginHeight=0,
-        align='center',
-        image=getIconPath('mirrorModeX232'),
-        useAlpha=True,
-        flat=True,
-        version='2017',
-        sourceType='python',
-        command=btnCmds[btnIdx]
-    )
-    btnIdx += 1
-
-    def mirrorMeshX1():
-        mirrorMesh('x')
-    btnCmds.append(mirrorMeshX1)
-    cmds.shelfButton(
-        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
-        annotation='',
-        width=windowSize[1],
-        height=windowSize[1],
-        marginWidth=0,
-        marginHeight=0,
-        align='center',
-        image=getIconPath('mirrorModeX132'),
-        useAlpha=True,
-        flat=True,
-        version='2017',
-        sourceType='python',
-        command=btnCmds[btnIdx]
-    )
-    btnIdx += 1
-    btnCmds.append(resetMesh)
     cmds.shelfButton(
         parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
         annotation='',
@@ -617,11 +551,59 @@ def createUI():
         flat=True,
         version='2017',
         sourceType='python',
-        command=btnCmds[btnIdx]
+        command=resetMesh
+    )
+    cmds.shelfButton(
+        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
+        annotation='',
+        width=24,
+        height=windowSize[1],
+        image=getIconPath('separator16x32'),
+        useAlpha=True,
+        flat=True,
+        sourceType='python',
+        command=separator,
+        enable=False
+    )
+    cmds.button(
+        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
+        annotation='Shows the custom project browser...',
+        width=windowSize[1] * 2,
+        height=30,
+        backgroundColor=[0.26, 0.26, 0.26],
+        highlightColor=[0.78, 0.78, 0.78],
+        align='center',
+        label='Files',
+        command=showFiles
+    )
+    cmds.button(
+        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
+        annotation='Shows the custom project browser...',
+        width=windowSize[1] * 2,
+        height=30,
+        backgroundColor=[0.26, 0.26, 0.26],
+        highlightColor=[0.78, 0.78, 0.78],
+        align='center',
+        label='Projects',
+        command=showProjects
+    )
+    cmds.shelfButton(
+        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
+        annotation='',
+        width=24,
+        height=windowSize[1],
+        image=getIconPath('separator16x32'),
+        useAlpha=True,
+        flat=True,
+        sourceType='python',
+        command=separator,
+        enable=False
     )
 
-    ptr = OpenMayaUI.MQtUtil.findControl('MainPane')
-    MainPaneQt = shiboken2.wrapInstance(long(ptr), QtWidgets.QWidget)
+    window.setContentsMargins(0, 0, 0, 0)
+    window.layout().setContentsMargins(0, 0, 0, 0)
+    window.layout().setSpacing(0)
 
-    layout = MainPaneQt.layout()
-    layout.insertWidget(0, window)
+    ptr = OpenMayaUI.MQtUtil.findControl('MainPane')
+    widget = shiboken2.wrapInstance(long(ptr), QtWidgets.QWidget)
+    widget.layout().insertWidget(0, window)

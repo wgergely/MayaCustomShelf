@@ -130,7 +130,7 @@ MAYA_VIEWPORT_PRESET['preset3'] = (  # VIEW MESH ONLY
     {'jointXray': False},
     {'activeComponentsXray': False},
     {'maxConstantTransparency': 1.0},
-    {'displayTextures': False},
+    {'displayTextures': True},
     {'smoothWireframe': True},
     {'lineWidth': 1.0},
     {'textureAnisotropic': False},
