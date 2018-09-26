@@ -1,12 +1,21 @@
-""" Custom Viewport Presets for Maya viewports
+"""This module defines custom Maya viewport presets.
+
+We can define what objects to be visible with these hard-coded viewport presets.
+Each preset is a tuple of keyword/value pairs that will be passed to
+cmds.modelEditor(modelEditorName, edit=True, **kwargs)
+
+The presets are stored in MAYA_VIEWPORT_PRESET (dict).
+
+Methods:
+    applyViewportPreset (preset: tuple):    Applies the given preset to the current
+                                            model panel.
+
 """
 
 # pylint: disable=C0103
-
-import maya.cmds as cmds # pylint: disable=E0401
+import maya.cmds as cmds  # pylint: disable=E0401
 
 MAYA_VIEWPORT_PRESET = {}
-
 MAYA_VIEWPORT_PRESET['preset1'] = (
     {'rendererName': 'vp2Renderer'},
     {'displayLights': 'default'},
@@ -171,15 +180,19 @@ MAYA_VIEWPORT_PRESET['preset3'] = (  # VIEW MESH ONLY
 
 
 def applyViewportPreset(preset):
-    """ Applies the specified viewport preset """
+    """Applies the specified viewport preset.
 
+    Args:
+        preset (tuple):     A list of keyword/value pairs.
+
+    """
     def _set(**kwargs):
         return cmds.modelEditor(modelEditorName, edit=True, **kwargs)
 
     modelPanelName = cmds.getPanel(withFocus=True)
     if 'model' not in modelPanelName:
         return
-        
+
     modelEditorName = cmds.modelPanel(
         modelPanelName, query=True, modelEditor=True)
 

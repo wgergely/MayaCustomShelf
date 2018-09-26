@@ -1,8 +1,36 @@
-""" Custom UI Icons
-"""
+"""MayaCustomShelf's button icons as base64 encoded strings."""
+# pylint: disable=C0103, C0301
 
-# pylint: disable=C0103
-# pylint: disable=C0301
+import os
+import base64
+import tempfile
+
+
+def getIconPath(string):
+    """Returns the path for a given icon name."""
+    path = os.path.normpath(
+        os.path.join(
+            tempfile.gettempdir(),
+            'MCShelf_{}.png'.format(string)
+        )
+    )
+
+    if os.path.exists(path):
+        return path
+    return None
+
+
+def writeIconsToTempDir(string):
+    """Save binary data to file."""
+    path = os.path.normpath(
+        os.path.join(
+            tempfile.gettempdir(),
+            'MCShelf_{}.png'.format(string)
+        )
+    )
+    with open(path, 'w') as f:
+        f.write(base64.b64decode(icons[string]))
+
 
 icons = {
     'newCamera32':
@@ -34,3 +62,7 @@ icons = {
     'viewMesh16':
     """iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyZpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNi1jMTM4IDc5LjE1OTgyNCwgMjAxNi8wOS8xNC0wMTowOTowMSAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENDIDIwMTcgKFdpbmRvd3MpIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOkEyMTQwQTE3MzZGNTExRTdCOUQ0QzExODU0QjI0Q0FFIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOkEyMTQwQTE4MzZGNTExRTdCOUQ0QzExODU0QjI0Q0FFIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC5paWQ6QTIxNDBBMTUzNkY1MTFFN0I5RDRDMTE4NTRCMjRDQUUiIHN0UmVmOmRvY3VtZW50SUQ9InhtcC5kaWQ6QTIxNDBBMTYzNkY1MTFFN0I5RDRDMTE4NTRCMjRDQUUiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz7q55sIAAABQElEQVR42pSSL6+CYBTGL+zFSyDIRtHGxrQQEBqVDaNubgQr2W/Al6D4DWgEGuNTkJWRiWyMwoZyH33vENGgT4DznvM7f3gPjG3bPx+oaZq6rgVBIHidTqfL5UIDDMNQo+s6QshisQAEpqqqzWaTJAkBrSgKy7KvVa/X6/l8lmWZ5/nD4TCfz8MwJPBSGiWHHSD427ZFud1uN5lMqJNQ7nUe0DS03++HbdmeGNbuG44EhqXciB4dnzq8rTRUEAS400cC7g7f/RaFH9E8z33fL4rif07TNCVJEkVxu92madrdNZ1OqXE8HrFZMKqqep5nGAbBXnRdR/ZyudQ0bb1eO45TliWM1Wrlum4URWA4jovj+Lbp4QxZltEnNdBwNpvR0O9dtz30PwUmxgw49gYdugee9vC5GMuyvkr4usOfAAMALE6kyEuzq0kAAAAASUVORK5CYII=""",
 }
+
+
+for k in icons:
+    writeIconsToTempDir(k)

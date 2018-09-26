@@ -1,6 +1,7 @@
 """ Custom toolbar for Maya.
 The toolbar embeds itself into the viewport and adds buttons to the main window
 and to toggle between viewport presets.
+
 """
 
 # pylint: disable=C0103
@@ -8,10 +9,8 @@ and to toggle between viewport presets.
 import base64
 import os
 import tempfile
-import imp
-import sys
 
-import PySide2.QtWidgets as QtWidgets  # pylint: disable=E0401
+from PySide2 import QtWidgets, QtCore  # pylint: disable=E0401
 import shiboken2  # pylint: disable=E0401
 
 import maya.cmds as cmds  # pylint: disable=E0401
@@ -23,21 +22,16 @@ from MayaCustomShelf.customCamera import CAMERA_TEMPLATE
 from MayaCustomShelf.mayaViewportPreset import MAYA_VIEWPORT_PRESET
 from MayaCustomShelf.mayaViewportPreset import applyViewportPreset
 from MayaCustomShelf.Tools.randomizedDuplicate import RandomDuplicate
-from MayaCustomShelf.utils import QGet, getIconPath
+from MayaCustomShelf.icons import getIconPath
+
 
 SCRIPT_NAME = 'MayaCustomShelf'
 windowID = '{}Window'.format(SCRIPT_NAME)
 windowTitle = 'Gergely\'s Custom Toolset'
 windowPrefix = 'MCShelf'
-
-tempDir = tempfile.gettempdir()
-
-
 windowSize = (600, 32)
 margin = (8, 0)
 color = 0.23
-
-
 MENU_MODES = (
     'Modeling',
     'Rendering',
@@ -51,46 +45,23 @@ def separator(*args):  # pylint: disable=W0613
     pass
 
 
-def reload_modules(f):
-    """Reloads the given module name."""
-    for module in sys.modules.values():
-        if not module:
-            continue
-        elif f.lower() not in module.__name__.lower():
-            continue
-        try:
-            imp.reload(module)
-            print module, 'reloaded.'
-        except ImportError as err:
-            print err
-        except TypeError as err:
-            print err
-        except RuntimeError as err:
-            print err
-        except AssertionError as err:
-            print err
-
-
 def rsUtility(*args):  # pylint: disable=W0613
     """Show RenderSetupUtility Window"""
-    reload_modules('RenderSetupUtility')
     RenderSetupUtility.show()
 
 
 def importCameraPresetScene(*args):  # pylint: disable=W0613
     """ Imports the camera into the scene """
-
-    tempMaya = 'cameraTemplate.mb'
-    p = os.path.join(tempDir, tempMaya)
-    p = os.path.normpath(p)
-    f = open(p, mode='w')
-    f.write(base64.b64decode(CAMERA_TEMPLATE))
-    f.close()
+    path = os.path.join(tempfile.gettempdir(), 'cameraTemplate.mb')
+    path = os.path.normpath(path)
+    with open(path, mode='w') as f:
+        f.write(base64.b64decode(CAMERA_TEMPLATE))
 
     if cmds.objExists('camera'):
-        raise RuntimeWarning('An object named camera already exists.')
+        print '# An object named camera already exists. Nothing imported.'
+        return
 
-    cmds.file(p, i=True, defaultNamespace=True)
+    cmds.file(path, i=True, defaultNamespace=True)
 
 
 def viewPreset1(*args):  # pylint: disable=W0613
@@ -107,7 +78,6 @@ def viewPreset3(*args):  # pylint: disable=W0613
 
 def toggleFullScreen(*args):  # pylint: disable=W0613
     """This is a hackish implementation to toggle Maya's full-screen mode."""
-
     TEMPLATE = {
         'Shelf': True, # hide shelves
         'Outliner': False, # hide the outliner
@@ -135,7 +105,14 @@ def toggleFullScreen(*args):  # pylint: disable=W0613
             return gparent
         return parent
 
-    o = QGet()
+    ptr = OpenMayaUI.MQtUtil.mainWindow()
+    mayaMainWindow = shiboken2.wrapInstance(
+        long(ptr), QtWidgets.QMainWindow)
+
+    # Stopping updates as setting visibility
+    mayaMainWindow.setUpdatesEnabled(False)
+    cmds.refresh(suspend=True)
+
     mode = True
     for k in TEMPLATE:
         item = getQt(k)
@@ -145,13 +122,13 @@ def toggleFullScreen(*args):  # pylint: disable=W0613
 
     # Maya MainWindow children visibility
     if mode:
-        o.mayaMainWindow.showMaximized()
+        mayaMainWindow.showMaximized()
         for k in TEMPLATE:
             item = getQt(k)
             if TEMPLATE[k] and item:
                 item.show()
     else:
-        o.mayaMainWindow.showFullScreen()
+        mayaMainWindow.showFullScreen()
         for k in TEMPLATE:
             item = getQt(k)
             if TEMPLATE[k] and item:
@@ -184,6 +161,9 @@ def toggleFullScreen(*args):  # pylint: disable=W0613
         else:
             outlinerTabBar.hide()
 
+    # Enabling updates
+    mayaMainWindow.setUpdatesEnabled(True)
+    cmds.refresh(suspend=False)
 
 
 def mirrorMesh(axis):
@@ -330,9 +310,7 @@ def createUI():
     but perhaps this would be better implemented to be written in PySide2.
 
     """
-    btnIdx = -1
-    shelfIdx = -1
-    btnCmds = []
+    shelfIdx = '#'
 
     mayaMainWindow = shiboken2.wrapInstance(
         long(OpenMayaUI.MQtUtil.mainWindow()),
@@ -351,9 +329,8 @@ def createUI():
     window.show()
 
     # The main layout. TODO: Would be cleaner if this was a PySide2 widget/layout
-    shelfIdx += 1
     cmds.shelfLayout(
-        '%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
+        '{}_shelfLayout1'.format(windowPrefix),
         parent=windowID,
         style='iconOnly',
         width=windowSize[0],
@@ -363,7 +340,7 @@ def createUI():
     )
 
     cmds.shelfButton(
-        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
+        parent='{}_shelfLayout1'.format(windowPrefix),
         annotation='',
         width=windowSize[1],
         height=windowSize[1],
@@ -378,7 +355,7 @@ def createUI():
         command=rsUtility
     )
     cmds.shelfButton(
-        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
+        parent='{}_shelfLayout1'.format(windowPrefix),
         annotation='',
         width=24,
         height=windowSize[1],
@@ -390,7 +367,7 @@ def createUI():
         enable=False
     )
     cmds.shelfButton(
-        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
+        parent='{}_shelfLayout1'.format(windowPrefix),
         annotation='',
         width=windowSize[1],
         height=windowSize[1],
@@ -405,7 +382,7 @@ def createUI():
         command=importCameraPresetScene
     )
     cmds.shelfButton(
-        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
+        parent='{}_shelfLayout1'.format(windowPrefix),
         annotation='',
         width=24,
         height=windowSize[1],
@@ -417,7 +394,7 @@ def createUI():
         enable=False
     )
     viewPreset1Btn = cmds.shelfButton(
-        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
+        parent='{}_shelfLayout1'.format(windowPrefix),
         annotation='',
         width=windowSize[1],
         height=windowSize[1],
@@ -432,7 +409,7 @@ def createUI():
         command=viewPreset1
     )
     viewPreset2Btn = cmds.shelfButton(
-        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
+        parent='{}_shelfLayout1'.format(windowPrefix),
         annotation='',
         width=windowSize[1],
         height=windowSize[1],
@@ -447,7 +424,7 @@ def createUI():
         command=viewPreset2
     )
     viewPreset3Btn = cmds.shelfButton(
-        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
+        parent='{}_shelfLayout1'.format(windowPrefix),
         annotation='',
         width=windowSize[1],
         height=windowSize[1],
@@ -462,7 +439,7 @@ def createUI():
         command=viewPreset3
     )
     cmds.shelfButton(
-        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
+        parent='{}_shelfLayout1'.format(windowPrefix),
         annotation='',
         width=24,
         height=windowSize[1],
@@ -474,7 +451,7 @@ def createUI():
         enable=False
     )
     toggleFullScreenBtn = cmds.shelfButton(
-        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
+        parent='{}_shelfLayout1'.format(windowPrefix),
         annotation='',
         width=windowSize[1],
         height=windowSize[1],
@@ -489,7 +466,7 @@ def createUI():
         command=toggleFullScreen
     )
     cmds.shelfButton(
-        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
+        parent='{}_shelfLayout1'.format(windowPrefix),
         annotation='',
         width=24,
         height=windowSize[1],
@@ -507,14 +484,14 @@ def createUI():
         height=windowSize[1],
         annotation='',
         backgroundColor=[color + 0.05] * 3,
-        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
+        parent='{}_shelfLayout1'.format(windowPrefix),
         changeCommand=setMenuMode
     )
     for item in MENU_MODES:
         cmds.menuItem(item, enableCommandRepeat=True, command=setMenuMode)
 
     cmds.shelfButton(
-        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
+        parent='{}_shelfLayout1'.format(windowPrefix),
         annotation='',
         width=24,
         height=windowSize[1],
@@ -527,7 +504,7 @@ def createUI():
     )
 
     cmds.shelfButton(
-        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
+        parent='{}_shelfLayout1'.format(windowPrefix),
         annotation='',
         width=windowSize[1],
         height=windowSize[1],
@@ -542,7 +519,7 @@ def createUI():
         command=randomizedDuplicate
     )
     cmds.shelfButton(
-        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
+        parent='{}_shelfLayout1'.format(windowPrefix),
         annotation='',
         width=24,
         height=windowSize[1],
@@ -554,7 +531,7 @@ def createUI():
         enable=False
     )
     cmds.shelfButton(
-        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
+        parent='{}_shelfLayout1'.format(windowPrefix),
         annotation='',
         width=windowSize[1],
         height=windowSize[1],
@@ -595,5 +572,5 @@ def createUI():
     # Adding shortcuts
     ptr = OpenMayaUI.MQtUtil.findControl(toggleFullScreenBtn)
     widget = shiboken2.wrapInstance(long(ptr), QtWidgets.QWidget)
-    shortcut = QtWidgets.QShortcut('Ctrl+Shift+F', widget)
+    shortcut = QtWidgets.QShortcut('Alt+F', widget, context=QtCore.Qt.ApplicationShortcut)
     shortcut.activated.connect(toggleFullScreen)

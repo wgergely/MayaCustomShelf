@@ -16,34 +16,17 @@ from MayaCustomShelf.mayaViewportPreset import (
     MAYA_VIEWPORT_PRESET,
     applyViewportPreset
 )
-from MayaCustomShelf.utils import getIconPath
+from MayaCustomShelf.icons import getIconPath
 from RenderSetupUtility.main.shaderUtility import ShaderUtility
 
-class Dockable(MayaQWidgetDockableMixin):
-    def __init__(self):
-        super(MayaQWidgetDockableMixin, self).__init__()
 
-class CameraLayoutWindow(Dockable, QtWidgets.QWidget):
+class CameraLayoutWindow(MayaQWidgetDockableMixin, QtWidgets.QWidget):
     """ A Custom Model View for Layout inspection """
 
     windowID = 'cameraLayout'
     wcID = '%sWorkspaceControl' % windowID
 
-    _instance = None
-
-    def __new__(cls, *awrgs, **kwargs):
-        if not cls._instance:
-            cls._instance = QtWidgets.QWidget.__new__(cls, *awrgs, **kwargs)
-            cls._instance.__initialized__ = False
-        else:
-            cls._instance.__initialized__ = True
-        return cls._instance
-
     def __init__(self, parent=None):
-        if hasattr(self, '__initialized__'):
-            if self.__initialized__:
-                return
-        # super(CameraLayoutWindow, self).__init__(parent=parent)
         MayaQWidgetDockableMixin.__init__(self)
         QtWidgets.QWidget.__init__(self, parent=parent)
 
@@ -51,9 +34,10 @@ class CameraLayoutWindow(Dockable, QtWidgets.QWidget):
 
         self.setWindowTitle('Camera Layout')
         self.setObjectName(self.__class__.windowID)
-        self.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
-                           QtWidgets.QSizePolicy.Preferred)
-        self.setContentsMargins(0, 0, 0, 0)
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.Preferred,
+            QtWidgets.QSizePolicy.Preferred
+        )
 
         # Set window Layout
         QStackedLayout = QtWidgets.QStackedLayout()

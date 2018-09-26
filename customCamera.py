@@ -1,5 +1,5 @@
-""" Custom Camera Rig for Maya
-This is a maya scene encoded as a binary text.
+"""Custom Camera Rig for Maya.
+This is a maya scene encoded as a base64 encoded string.
 """
 # pylint: disable=C0103
 # pylint: disable=C0301
