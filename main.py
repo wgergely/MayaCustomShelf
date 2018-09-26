@@ -182,16 +182,10 @@ def toggleFullScreen(*args):  # pylint: disable=W0613
     outliner = getQt('Outliner')
     if outliner is not None:
         outlinerTabBar = outliner.findChildren(QtWidgets.QTabBar)[0]
-
-        if mode is True:
+        if mode:
             outlinerTabBar.show()
-            for obj in outliner.findChildren(QtWidgets.QScrollBar):
-                obj.show()
-        if mode is False:
+        else:
             outlinerTabBar.hide()
-            for obj in outliner.findChildren(QtWidgets.QScrollBar):
-                o.setWidget(obj)
-                obj.hide()
 
 
 
@@ -461,6 +455,18 @@ def createUI():
     cmds.shelfButton(
         parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
         annotation='',
+        width=24,
+        height=windowSize[1],
+        image=getIconPath('separator16x32'),
+        useAlpha=True,
+        flat=True,
+        sourceType='python',
+        command=separator,
+        enable=False
+    )
+    cmds.shelfButton(
+        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
+        annotation='',
         width=windowSize[1],
         height=windowSize[1],
         marginWidth=0,
@@ -553,52 +559,7 @@ def createUI():
         sourceType='python',
         command=resetMesh
     )
-    cmds.shelfButton(
-        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
-        annotation='',
-        width=24,
-        height=windowSize[1],
-        image=getIconPath('separator16x32'),
-        useAlpha=True,
-        flat=True,
-        sourceType='python',
-        command=separator,
-        enable=False
-    )
-    cmds.button(
-        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
-        annotation='Shows the custom project browser...',
-        width=windowSize[1] * 2,
-        height=30,
-        backgroundColor=[0.26, 0.26, 0.26],
-        highlightColor=[0.78, 0.78, 0.78],
-        align='center',
-        label='Files',
-        command=showFiles
-    )
-    cmds.button(
-        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
-        annotation='Shows the custom project browser...',
-        width=windowSize[1] * 2,
-        height=30,
-        backgroundColor=[0.26, 0.26, 0.26],
-        highlightColor=[0.78, 0.78, 0.78],
-        align='center',
-        label='Projects',
-        command=showProjects
-    )
-    cmds.shelfButton(
-        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
-        annotation='',
-        width=24,
-        height=windowSize[1],
-        image=getIconPath('separator16x32'),
-        useAlpha=True,
-        flat=True,
-        sourceType='python',
-        command=separator,
-        enable=False
-    )
+
 
     window.setContentsMargins(0, 0, 0, 0)
     window.layout().setContentsMargins(0, 0, 0, 0)
