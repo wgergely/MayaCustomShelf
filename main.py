@@ -94,18 +94,15 @@ def importCameraPresetScene(*args):  # pylint: disable=W0613
 
 
 def viewPreset1(*args):  # pylint: disable=W0613
-    modelPanelName = cmds.getPanel(withFocus=True)
-    applyViewportPreset(modelPanelName, MAYA_VIEWPORT_PRESET['preset1'])
+    applyViewportPreset(MAYA_VIEWPORT_PRESET['preset1'])
 
 
 def viewPreset2(*args):  # pylint: disable=W0613
-    modelPanelName = cmds.getPanel(withFocus=True)
-    applyViewportPreset(modelPanelName, MAYA_VIEWPORT_PRESET['preset2'])
+    applyViewportPreset(MAYA_VIEWPORT_PRESET['preset2'])
 
 
 def viewPreset3(*args):  # pylint: disable=W0613
-    modelPanelName = cmds.getPanel(withFocus=True)
-    applyViewportPreset(modelPanelName, MAYA_VIEWPORT_PRESET['preset3'])
+    applyViewportPreset(MAYA_VIEWPORT_PRESET['preset3'])
 
 
 def toggleFullScreen(*args):  # pylint: disable=W0613
@@ -410,6 +407,18 @@ def createUI():
     cmds.shelfButton(
         parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
         annotation='',
+        width=24,
+        height=windowSize[1],
+        image=getIconPath('separator16x32'),
+        useAlpha=True,
+        flat=True,
+        sourceType='python',
+        command=separator,
+        enable=False
+    )
+    viewPreset1Btn = cmds.shelfButton(
+        parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
+        annotation='',
         width=windowSize[1],
         height=windowSize[1],
         marginWidth=0,
@@ -422,7 +431,7 @@ def createUI():
         sourceType='python',
         command=viewPreset1
     )
-    cmds.shelfButton(
+    viewPreset2Btn = cmds.shelfButton(
         parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
         annotation='',
         width=windowSize[1],
@@ -437,7 +446,7 @@ def createUI():
         sourceType='python',
         command=viewPreset2
     )
-    cmds.shelfButton(
+    viewPreset3Btn = cmds.shelfButton(
         parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
         annotation='',
         width=windowSize[1],
@@ -464,7 +473,7 @@ def createUI():
         command=separator,
         enable=False
     )
-    cmds.shelfButton(
+    toggleFullScreenBtn = cmds.shelfButton(
         parent='%s_%s%s' % (windowPrefix, 'shelfLayout', shelfIdx),
         annotation='',
         width=windowSize[1],
@@ -560,7 +569,6 @@ def createUI():
         command=resetMesh
     )
 
-
     window.setContentsMargins(0, 0, 0, 0)
     window.layout().setContentsMargins(0, 0, 0, 0)
     window.layout().setSpacing(0)
@@ -568,3 +576,24 @@ def createUI():
     ptr = OpenMayaUI.MQtUtil.findControl('MainPane')
     widget = shiboken2.wrapInstance(long(ptr), QtWidgets.QWidget)
     widget.layout().insertWidget(0, window)
+
+    # Adding shortcuts
+    ptr = OpenMayaUI.MQtUtil.findControl(viewPreset1Btn)
+    widget = shiboken2.wrapInstance(long(ptr), QtWidgets.QWidget)
+    shortcut = QtWidgets.QShortcut('Alt+1', widget)
+    shortcut.activated.connect(viewPreset1)
+    # Adding shortcuts
+    ptr = OpenMayaUI.MQtUtil.findControl(viewPreset2Btn)
+    widget = shiboken2.wrapInstance(long(ptr), QtWidgets.QWidget)
+    shortcut = QtWidgets.QShortcut('Alt+2', widget)
+    shortcut.activated.connect(viewPreset2)
+    # Adding shortcuts
+    ptr = OpenMayaUI.MQtUtil.findControl(viewPreset3Btn)
+    widget = shiboken2.wrapInstance(long(ptr), QtWidgets.QWidget)
+    shortcut = QtWidgets.QShortcut('Alt+3', widget)
+    shortcut.activated.connect(viewPreset3)
+    # Adding shortcuts
+    ptr = OpenMayaUI.MQtUtil.findControl(toggleFullScreenBtn)
+    widget = shiboken2.wrapInstance(long(ptr), QtWidgets.QWidget)
+    shortcut = QtWidgets.QShortcut('Ctrl+Shift+F', widget)
+    shortcut.activated.connect(toggleFullScreen)

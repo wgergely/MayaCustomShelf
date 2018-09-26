@@ -170,15 +170,20 @@ MAYA_VIEWPORT_PRESET['preset3'] = (  # VIEW MESH ONLY
 )
 
 
-def applyViewportPreset(modelPanelName, VIEWPORT_SETTINGS):
+def applyViewportPreset(preset):
     """ Applies the specified viewport preset """
 
     def _set(**kwargs):
         return cmds.modelEditor(modelEditorName, edit=True, **kwargs)
 
+    modelPanelName = cmds.getPanel(withFocus=True)
+    if 'model' not in modelPanelName:
+        return
+        
     modelEditorName = cmds.modelPanel(
         modelPanelName, query=True, modelEditor=True)
-    for item in VIEWPORT_SETTINGS:
+
+    for item in preset:
         k = next(iter(item))
         if item[k] is not None:
             _set(**item)
