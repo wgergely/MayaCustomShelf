@@ -261,18 +261,17 @@ def unlock_attributes(obj):
     for attr in attrs:
         try:
             if cmds.getAttr("{0}.{1}".format(obj, attr), lock=True) == True:
-                print "{0}.{1} is Locked".format(obj, attr)
                 cmds.setAttr("{0}.{1}".format(obj, attr), lock=False)
-            else:
-                print "{0}.{1} is unlocked".format(obj, attr)
         except ValueError:
             print "Couldn't get locked-state of {0}.{1}".format(obj, attr)
 
 def resetMesh(*args):
     """Deletes the mesh construction history."""
     sel = cmds.ls(selection=True, long=True)
+
     for s in sel:
         unlock_attributes(s)
+    for s in sel:
         cmds.cutKey(s, shape=True, hierarchy='both')
         cmds.makeIdentity(apply=True)
         cmds.delete(s, constructionHistory=True)
