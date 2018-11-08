@@ -190,13 +190,14 @@ def applyViewportPreset(preset):
         return cmds.modelEditor(modelEditorName, edit=True, **kwargs)
 
     modelPanelName = cmds.getPanel(withFocus=True)
-    if 'model' not in modelPanelName:
-        return
 
-    modelEditorName = cmds.modelPanel(
-        modelPanelName, query=True, modelEditor=True)
+    try:
+        modelEditorName = cmds.modelPanel(
+            modelPanelName, query=True, modelEditor=True)
 
-    for item in preset:
-        k = next(iter(item))
-        if item[k] is not None:
-            _set(**item)
+        for item in preset:
+            k = next(iter(item))
+            if item[k] is not None:
+                _set(**item)
+    except Exception as err:
+        print 'Could not apply viewport preset.\n{}'.format(err)

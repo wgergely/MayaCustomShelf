@@ -544,6 +544,38 @@ def createUI():
         sourceType='python',
         command=resetMesh
     )
+    cmds.shelfButton(
+    parent='{}_shelfLayout1'.format(windowPrefix),
+    annotation='',
+    width=24,
+    height=windowSize[1],
+    image=getIconPath('separator16x32'),
+    useAlpha=True,
+    flat=True,
+    sourceType='python',
+    command=separator,
+    enable=False
+    )
+
+    def deadline():
+        import maya.mel as mel
+        mel.eval('SubmitJobToDeadline')
+
+    cmds.shelfButton(
+    parent='{}_shelfLayout1'.format(windowPrefix),
+    annotation='',
+    width=windowSize[1],
+    height=windowSize[1],
+    marginWidth=0,
+    marginHeight=0,
+    align='center',
+    image='//GORDO/3d_share/deadline10_repo/submission/Maya/Main/Submit.png',
+    useAlpha=True,
+    flat=True,
+    version='2017',
+    sourceType='python',
+    command=deadline
+    )
 
     window.setContentsMargins(0, 0, 0, 0)
     window.layout().setContentsMargins(0, 0, 0, 0)
